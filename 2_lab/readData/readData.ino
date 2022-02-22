@@ -34,12 +34,4 @@ void loop() {
       Serial.flush();
     }
   }
-
-  
-  // read the input on analog pin 0:
-//  int sensorValue = analogRead(A0);
-  // print out the value you read:
-//  Serial.println("Hello, world!");
-//  Serial.println(sensorValue);
-//  delay(1);        // delay in between reads for stability
 }
