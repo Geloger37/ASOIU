@@ -15,8 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     arduino = new QSerialPort(this);
     serialBuffer = "";
-    parsed_data = "";
-    temperature_value = 0.0;
+    first_try = true;
 
     /*
      *   Identify the port the arduino uno is on.
@@ -41,23 +40,26 @@ MainWindow::MainWindow(QWidget *parent)
      *  Open and configure the arduino port if available
      */
     if(arduino_is_available){
-        QMessageBox::information(this, "Serialportinfo", arduino_uno_port_name);
+        QMessageBox::information(this, "Serialportinfo", "Port name is " + arduino_uno_port_name);
         qDebug() << "Found the arduino port...\n";
+
         arduino->setPortName(arduino_uno_port_name);
         arduino->open(QSerialPort::ReadWrite);
         arduino->setBaudRate(QSerialPort::Baud9600);
         arduino->setDataBits(QSerialPort::Data8);
-        arduino->setFlowControl(QSerialPort::NoFlowControl);
+        arduino->setFlowControl(QSerialPort::NoFlowControl); // doesn't influence on work
         arduino->setParity(QSerialPort::NoParity);
         arduino->setStopBits(QSerialPort::OneStop);
-//        arduino->waitForBytesWritten(100);
+//        arduino->waitForBytesWritten(100); // how does it work?
+
         QObject::connect(arduino, SIGNAL(readyRead()), this, SLOT(readSerial()));
+
         QTimer *timer = new QTimer(this);
         QObject::connect(timer, SIGNAL(timeout()), this, SLOT(writeSerial()));
         timer->start(1000);
     }else{
         qDebug() << "Couldn't find the correct port for the arduino.\n";
-        QMessageBox::information(this, "Serial Port Error", "Couldn't open serial port to arduino.");
+//        QMessageBox::information(this, "Serial Port Error", "Couldn't open serial port to arduino.");
     }
 
 }
@@ -69,24 +71,36 @@ MainWindow::~MainWindow()
 
 void MainWindow::readSerial()
 {
+    if(first_try) {
+        serialData = arduino->readAll();
+//        qDebug() << "DEBUG: " << (serialData);
+//        bool ok;
+//        long hex = serialData.toLong(&ok, 16);
+//        qDebug() << "HEX: " << hex;
+        if(serialData == "\xFF") {
+//            QMessageBox::information(this, "Success", "Test message received!");
+            qDebug() << "Test message received!";
+//              MainWindow::writeSerial("0");
+        }
+        else {
+//            QMessageBox::information(this, "Failed", "Port settings is incorrected!");
+            qDebug() << "Port settings is incorrected!";
+        }
+        first_try = false;
+        serialBuffer = ""; // buffer string is flushed
+        return;
+    }
     // read all the data from serial but not garantee ALL we need
     serialData = arduino->readAll();
-//    qDebug() << serialData;
     // add new information to the buffer
     serialBuffer += QString(serialData);
-    // check on the end of buffer. If ended symbol is '\n' that means 1 full data/
-    if(serialBuffer.back() == '\n') {/* That is try to check start of the sending
-        if(serialBuffer == QString("Start")) {
-            QMessageBox::information(this, "Success", "Test message received!");
-//            MainWindow::writeSerial("0");
-        }
-        else {*/
+    // check on the end of buffer. If ended symbol is '\n' that means 1 full data
+    if(serialBuffer.back() == '\n') {// That is try to check start of the sending
             QStringList buffer_split = serialBuffer.split(":"); // split data into temperature and pressure (format: "ttt:ppp")
             ui->temperature_textEdit->setText(buffer_split[0]);
-            ui->pressure_textEdit->setText(buffer_split[1]);
-//            MainWindow::writeSerial("0");
-//        }
-        serialBuffer = ""; // buffer is flushed
+            ui->pressure_textEdit->setText(buffer_split[1].split("\n")[0]);
+//          MainWindow::writeSerial("0");
+            serialBuffer = ""; // buffer string is flushed
     }
 }
 
@@ -94,4 +108,3 @@ void MainWindow::writeSerial()
 {
     arduino->write("0"); // send a request
 }
-

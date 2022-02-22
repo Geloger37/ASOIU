@@ -29,8 +29,7 @@ private:
     static const quint16 arduino_uno_product_id = 67;
     QByteArray serialData;
     QString serialBuffer;
-    QString parsed_data;
-    double temperature_value;
+    bool first_try;
 
 };
 #endif // MAINWINDOW_H
